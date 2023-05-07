@@ -36,7 +36,7 @@ void Renderer::OnResize(uint32_t width, uint32_t height)
 	m_AspectRatio = width / (float) height;
 }
 
-void Renderer::Render(const Camera& camera)
+void Renderer::Render(const Scene& scene, const Camera& camera)
 {
 	Ray ray;
 	ray.Origin = camera.GetPosition();
@@ -47,7 +47,7 @@ void Renderer::Render(const Camera& camera)
 		{
 			uint32_t pixelCoordinate = x + y * m_FinalImage->GetWidth();
 			ray.Direction = camera.GetRayDirections()[pixelCoordinate];
-			glm::vec4 color = TraceRay(ray);
+			glm::vec4 color = TraceRay(scene, ray);
 			color = glm::clamp(color, glm::vec4(0.0f), glm::vec4(1.0f));
 			m_ImageData[pixelCoordinate] = Utils::ConvertToRGBA(color);
 		}
@@ -57,48 +57,53 @@ void Renderer::Render(const Camera& camera)
 	m_Time += 0.02f;
 }
 
-glm::vec4 Renderer::TraceRay(const Ray& ray)
+glm::vec4 Renderer::TraceRay(const Scene& scene, const Ray& ray)
 {
-	// Normalize here has an impact of performances
-	// rayDirection = glm::normalize(rayDirection);
-	float radius = 2.0f;
+	if (scene.Spheres.size() == 0)
+		return glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
-	// Draw a sphere at 0,0
-	// Compute rays from camera to pixel and check if it hit the sphere
-	// Sphere equation is
-	// (bx^2 + by^2 + bz^2) t^2 + 2 (axbx + ayby + azbz) t + (ax^2 + ay^2 + az^2 - r^2) = 0
-	// where
-	// a = ray origin
-	// b = ray direction
-	// r = radius
-	// Compute discrimant b^2 - 4ac: if >= 0, we hit
+	const Sphere* closestSphere = nullptr;
+	float hitDistance = std::numeric_limits<float>::max();
+	for (const Sphere& sphere : scene.Spheres)
+	{
+		float radius = sphere.Radius;
+		glm::vec3 sphereCenter = sphere.Position;
 
-	float a = glm::dot(ray.Direction, ray.Direction);
-	float b = 2 * glm::dot(ray.Origin, ray.Direction);
-	float c = glm::dot(ray.Origin, ray.Origin) - radius * radius;
+		float a = glm::dot(ray.Direction, ray.Direction);
+		glm::vec3 cc = ray.Origin - sphereCenter;
+		float b = 2 * glm::dot(cc, ray.Direction);
+		float c = glm::dot(cc, cc) - radius * radius;
 
-	float discriminant = b * b - 4.0f * a * c;
+		float discriminant = b * b - 4.0f * a * c;
 
-	if (discriminant < 0)
+		if (discriminant < 0)
+			continue;
+
+		// Compute point on sphere
+		// float t1 = (-b + sqrtf(discriminant)) / (2.0f * a);
+		float t = (-b - sqrtf(discriminant)) / (2.0f * a);
+		if (t > 0 && t < hitDistance)
+		{
+			hitDistance = t;
+			closestSphere = &sphere;
+		}
+	}
+
+	if (closestSphere == nullptr)
 		return glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
 	// Light move on a circle at y = 5 and x^2 + z^2 = 5.0f
-	glm::vec3 lightOrigin(5.0f * cosf(m_Time), 5.0, 5.0f * sinf(m_Time));
+	glm::vec3 lightDirection = glm::normalize(glm::vec3(- 1.0f, -1.0f, -1.0f));
 
-	// Compute point on sphere
-	// float t1 = (-b + sqrtf(discriminant)) / (2.0f * a);
-	float t = (-b - sqrtf(discriminant)) / (2.0f * a);
-	// float t = (t1 < t2)? t1: t2;
-	glm::vec3 point = ray.Origin + t * ray.Direction;
-	// Since sphere is centered on 0,0,0, point is also the normal
-	// glm::vec3 normal = glm::normalize(point);
-	glm::vec3 normal = point / radius;
+	glm::vec3 point = ray.Origin + hitDistance * ray.Direction;
+	glm::vec3 normal = point - closestSphere->Position;
+	normal = glm::normalize(normal);
+	// normal = point / closestSphere->Radius;
 
 	// Shade depends on normal dot (point to light) ray
-	glm::vec3 lightToPoint = lightOrigin - point;
-	lightToPoint = glm::normalize(lightToPoint);
-	float pointExposition = glm::max(glm::dot(lightToPoint, normal), 0.05f);
+	// glm::vec3 lightToPoint = lightDirection;  // lightOrigin - point;
+	// lightToPoint = glm::normalize(lightToPoint);
+	float pointExposition = glm::max(glm::dot(-lightDirection, normal), 0.05f);
 
-	uint8_t r = pointExposition;
-	return glm::vec4(pointExposition, 0.0f, 0.0f, 1.0f);
+	return glm::vec4(pointExposition * closestSphere->Albedo, 1.0f);
 }
