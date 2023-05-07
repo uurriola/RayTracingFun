@@ -10,6 +10,6 @@ Based on [tutorials on Youtube by The Cherno](https://www.youtube.com/watch?v=gf
 
 ## Progress
 
-*Please note that the capture frequency is pretty low, not the rendering itself.*
+*Please note that the capture frequency is pretty low. The rendering itself is not that slow.*
 
 ![Sphere with simple moving light](/Assets/moving_light.gif)
