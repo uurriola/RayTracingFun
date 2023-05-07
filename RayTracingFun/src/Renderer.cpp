@@ -36,20 +36,20 @@ void Renderer::OnResize(uint32_t width, uint32_t height)
 	m_AspectRatio = width / (float) height;
 }
 
-void Renderer::Render()
+void Renderer::Render(const Camera& camera)
 {
+	Ray ray;
+	ray.Origin = camera.GetPosition();
 	// Render pixels
 	for (uint32_t y = 0; y < m_FinalImage->GetHeight(); y++)
 	{
 		for (uint32_t x = 0; x < m_FinalImage->GetWidth(); x++)
 		{
-			glm::vec2 coord = { (float) x / (float) m_FinalImage->GetWidth(),  (float) y / (float) m_FinalImage->GetHeight() };
-			coord = coord * 2.0f - 1.0f;
-			coord.x *= m_AspectRatio;
-
-			glm::vec4 color = PerPixel(coord);
+			uint32_t pixelCoordinate = x + y * m_FinalImage->GetWidth();
+			ray.Direction = camera.GetRayDirections()[pixelCoordinate];
+			glm::vec4 color = TraceRay(ray);
 			color = glm::clamp(color, glm::vec4(0.0f), glm::vec4(1.0f));
-			m_ImageData[x + y * m_FinalImage->GetWidth()] = Utils::ConvertToRGBA(color);
+			m_ImageData[pixelCoordinate] = Utils::ConvertToRGBA(color);
 		}
 	}
 	m_FinalImage->SetData(m_ImageData);
@@ -57,11 +57,8 @@ void Renderer::Render()
 	m_Time += 0.02f;
 }
 
-glm::vec4 Renderer::PerPixel(glm::vec2 coord)
+glm::vec4 Renderer::TraceRay(const Ray& ray)
 {
-	// Coord z = -1 per definition
-	glm::vec3 rayOrigin(0.0f, 0.0, 5.0f);
-	glm::vec3 rayDirection(coord.x, coord.y, -1.0f);
 	// Normalize here has an impact of performances
 	// rayDirection = glm::normalize(rayDirection);
 	float radius = 2.0f;
@@ -76,9 +73,9 @@ glm::vec4 Renderer::PerPixel(glm::vec2 coord)
 	// r = radius
 	// Compute discrimant b^2 - 4ac: if >= 0, we hit
 
-	float a = glm::dot(rayDirection, rayDirection);
-	float b = 2 * glm::dot(rayOrigin, rayDirection);
-	float c = glm::dot(rayOrigin, rayOrigin) - radius * radius;
+	float a = glm::dot(ray.Direction, ray.Direction);
+	float b = 2 * glm::dot(ray.Origin, ray.Direction);
+	float c = glm::dot(ray.Origin, ray.Origin) - radius * radius;
 
 	float discriminant = b * b - 4.0f * a * c;
 
@@ -92,7 +89,7 @@ glm::vec4 Renderer::PerPixel(glm::vec2 coord)
 	// float t1 = (-b + sqrtf(discriminant)) / (2.0f * a);
 	float t = (-b - sqrtf(discriminant)) / (2.0f * a);
 	// float t = (t1 < t2)? t1: t2;
-	glm::vec3 point = rayOrigin + t * rayDirection;
+	glm::vec3 point = ray.Origin + t * ray.Direction;
 	// Since sphere is centered on 0,0,0, point is also the normal
 	// glm::vec3 normal = glm::normalize(point);
 	glm::vec3 normal = point / radius;
