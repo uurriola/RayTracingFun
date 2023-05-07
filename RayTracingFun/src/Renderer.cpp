@@ -54,7 +54,7 @@ void Renderer::Render()
 	}
 	m_FinalImage->SetData(m_ImageData);
 
-	m_Time += 0.05f;
+	m_Time += 0.02f;
 }
 
 glm::vec4 Renderer::PerPixel(glm::vec2 coord)
@@ -100,8 +100,7 @@ glm::vec4 Renderer::PerPixel(glm::vec2 coord)
 	// Shade depends on normal dot (point to light) ray
 	glm::vec3 lightToPoint = lightOrigin - point;
 	lightToPoint = glm::normalize(lightToPoint);
-	float pointExposition = glm::dot(lightToPoint, normal);
-	pointExposition = (pointExposition < 0.1f) ? 0.1f : pointExposition;
+	float pointExposition = glm::max(glm::dot(lightToPoint, normal), 0.05f);
 
 	uint8_t r = pointExposition;
 	return glm::vec4(pointExposition, 0.0f, 0.0f, 1.0f);
