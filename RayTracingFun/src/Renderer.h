@@ -12,12 +12,20 @@
 class Renderer
 {
 public:
+	struct Settings
+	{
+		bool Accumulate = true;
+	};
+public:
 	Renderer() = default;
 
 	void OnResize(uint32_t width, uint32_t height);
 	void Render(const Scene& scene, const Camera& camera);
 
 	std::shared_ptr<Walnut::Image> GetFinalImage() const { return m_FinalImage; }
+
+	void ResetFrameIndex() { m_FrameIndex = 1; }
+	Settings& GetSettings() { return m_Settings; }
 private:
 	struct HitPayload
 	{
@@ -30,16 +38,20 @@ private:
 
 	glm::vec4 PerPixel(uint32_t x, uint32_t y);  // Ray gen shader
 
-	HitPayload TraceRay(const Ray& ray);
-	HitPayload ClosestHit(const Ray& ray, float hitDistance, int objectIndex);
-	HitPayload Miss(const Ray& ray);
+	void TraceRay(const Ray& ray, Renderer::HitPayload& payload);
+	void ClosestHit(const Ray& ray, Renderer::HitPayload& payload);
+	void Miss(const Ray& ray, Renderer::HitPayload& payload);
 private:
 	std::shared_ptr<Walnut::Image> m_FinalImage;
+	Settings m_Settings;
+
+	std::vector<uint32_t> m_ImageHorizontalIterator, m_ImageVerticalIterator;
 
 	const Scene* m_ActiveScene = nullptr;
 	const Camera* m_ActiveCamera = nullptr;
 
 	uint32_t* m_ImageData = nullptr;
+	glm::vec4* m_AccumulationData = nullptr;
 
-	float m_Time = 0.0f;
+	uint32_t m_FrameIndex = 1;
 };
