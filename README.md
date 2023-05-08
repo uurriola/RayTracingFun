@@ -24,7 +24,7 @@ As of May 2023, these videos do not go as far as I'd like, so I switched to [_Ra
 
 ### Refraction
 
-![Refracting sphere](/Assets/refraction.png)
+![Refracting sphere](/Assets/update_refraction_index.png)
 
 ### Roughness
 

@@ -92,7 +92,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 	}
 #endif
 
-#define ANTIALIASING 1
+#define ANTIALIASING 0
 #if ANTIALIASING
 	const uint32_t SAMPLES_PER_PIXEL = 50;
 #else
