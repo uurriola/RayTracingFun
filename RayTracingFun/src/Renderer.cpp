@@ -18,6 +18,27 @@ namespace Utils
 		uint32_t result = (a << 24) | (b << 16) | (g << 8) | r;
 		return result;
 	}
+	
+	static float RandomFloat()
+	{
+		return static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+	}
+
+	static glm::vec2 RandomUnitPointOnCircle()
+	{
+		glm::vec2 randomVec(2.0f);
+		while (glm::dot(randomVec, randomVec) >= 1.0f)
+			randomVec = glm::vec2(RandomFloat(), RandomFloat());
+		return glm::normalize(randomVec);
+	}
+
+	static glm::vec3 RandomUnitVector()
+	{
+		glm::vec3 randomVec(2.0f);
+		while (glm::dot(randomVec, randomVec) >= 1.0f)
+			randomVec = Walnut::Random::Vec3(-1.0f, 1.0f);
+		return glm::normalize(randomVec);
+	}
 }
 
 void Renderer::OnResize(uint32_t width, uint32_t height)
@@ -56,22 +77,20 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 	if (m_FrameIndex == 1)
 		memset(m_AccumulationData, 0, m_FinalImage->GetWidth() * m_FinalImage->GetHeight() * sizeof(glm::vec4));
 
-	glm::vec4* mergedImageData = new glm::vec4[m_FinalImage->GetWidth() * m_FinalImage->GetHeight()];
 #define MT 1
 #if MT
 	std::for_each(std::execution::par, m_ImageVerticalIterator.begin(), m_ImageVerticalIterator.end(),
-		[this, mergedImageData](uint32_t y)
+		[this](uint32_t y)
 		{
 			std::for_each(std::execution::par, m_ImageHorizontalIterator.begin(), m_ImageHorizontalIterator.end(),
-			[this, y, mergedImageData](uint32_t x)
+			[this, y](uint32_t x)
 				{
-					mergedImageData[x + y * m_FinalImage->GetWidth()] = PerPixel(x, y);
-					/*glm::vec4 color = PerPixel(x, y);
+					glm::vec4 color = PerPixel(x, y);
 					m_AccumulationData[x + y * m_FinalImage->GetWidth()] += color;
 
 					glm::vec4 finalColor = m_AccumulationData[x + y * m_FinalImage->GetWidth()] / (float)m_FrameIndex;
 					finalColor = glm::clamp(finalColor, glm::vec4(0.0f), glm::vec4(1.0f));
-					mergedImageData[x + y * m_FinalImage->GetWidth()] = finalColor;*/
+					m_ImageData[x + y * m_FinalImage->GetWidth()] = Utils::ConvertToRGBA(finalColor);
 				}
 			);
 		}
@@ -81,81 +100,10 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 	{
 		for (uint32_t x = 0; x < m_FinalImage->GetWidth(); x++)
 		{
-			mergedImageData[x + y * m_FinalImage->GetWidth()] = PerPixel(x, y);
-			/*glm::vec4 color = PerPixel(x, y);
+			glm::vec4 color = PerPixel(x, y);
 			m_AccumulationData[x + y * m_FinalImage->GetWidth()] += color;
 
 			glm::vec4 finalColor = m_AccumulationData[x + y * m_FinalImage->GetWidth()] / (float)m_FrameIndex;
-			finalColor = glm::clamp(finalColor, glm::vec4(0.0f), glm::vec4(1.0f));
-			MergedImageData[x + y * m_FinalImage->GetWidth()] = finalColor;*/
-		}
-	}
-#endif
-
-#define ANTIALIASING 0
-#if ANTIALIASING
-	const uint32_t SAMPLES_PER_PIXEL = 50;
-#else
-	const uint32_t SAMPLES_PER_PIXEL = 0;
-#endif
-
-#if MT
-	std::for_each(std::execution::par, m_ImageVerticalIterator.begin(), m_ImageVerticalIterator.end(),
-		[this, mergedImageData, SAMPLES_PER_PIXEL](uint32_t y)
-		{
-			std::for_each(std::execution::par, m_ImageHorizontalIterator.begin(), m_ImageHorizontalIterator.end(),
-			[this, y, mergedImageData, SAMPLES_PER_PIXEL](uint32_t x)
-				{
-					glm::vec4 PixelColor = mergedImageData[x + y * m_FinalImage->GetWidth()];
-					for (int sample = 0; sample < SAMPLES_PER_PIXEL; sample++) {
-						uint32_t u = x + Walnut::Random::UInt(-5, 5);
-						uint32_t v = y + Walnut::Random::UInt(-5, 5);
-
-						if (u < 0)
-							u = 0;
-						else if (u >= m_FinalImage->GetWidth())
-							u = m_FinalImage->GetWidth() - 1;
-						if (v < 0)
-							v = 0;
-						else if (v >= m_FinalImage->GetHeight())
-							v = m_FinalImage->GetHeight() - 1;
-
-						PixelColor += mergedImageData[u + v * m_FinalImage->GetWidth()];
-					}
-
-					m_AccumulationData[x + y * m_FinalImage->GetWidth()] += PixelColor / (float)(SAMPLES_PER_PIXEL + 1);
-					glm::vec4 finalColor = m_AccumulationData[x + y * m_FinalImage->GetWidth()] / (float)m_FrameIndex;
-					finalColor = glm::clamp(finalColor, glm::vec4(0.0f), glm::vec4(1.0f));
-					// Gamma 2 correction (sqrt)
-					m_ImageData[x + y * m_FinalImage->GetWidth()] = Utils::ConvertToRGBA(glm::sqrt(finalColor));
-				}
-			);
-		}
-	);
-#else
-	for (uint32_t y = 0; y < m_FinalImage->GetHeight(); y++)
-	{
-		for (uint32_t x = 0; x < m_FinalImage->GetWidth(); x++)
-		{
-			glm::vec4 PixelColor = mergedImageData[x + y * m_FinalImage->GetWidth()];
-			for (int sample = 0; sample < SAMPLES_PER_PIXEL; sample++) {
-				uint32_t u = x + Walnut::Random::UInt(-1, 1);
-				uint32_t v = y + Walnut::Random::UInt(-1, 1);
-
-				if (u < 0)
-					u = 0;
-				else if (u >= m_FinalImage->GetWidth())
-					u = m_FinalImage->GetWidth() - 1;
-				if (v < 0)
-					v = 0;
-				else if (v >= m_FinalImage->GetHeight())
-					v = m_FinalImage->GetHeight() - 1;
-				
-				PixelColor += mergedImageData[u + v * m_FinalImage->GetWidth()];
-			}
-
-			m_AccumulationData[x + y * m_FinalImage->GetWidth()] += PixelColor / (float) (SAMPLES_PER_PIXEL + 1);
-			glm::vec4 finalColor = m_AccumulationData[x + y * m_FinalImage->GetWidth()] / (float) m_FrameIndex;
 			finalColor = glm::clamp(finalColor, glm::vec4(0.0f), glm::vec4(1.0f));
 			m_ImageData[x + y * m_FinalImage->GetWidth()] = Utils::ConvertToRGBA(finalColor);
 		}
@@ -168,87 +116,122 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 		m_FrameIndex++;
 	else
 		m_FrameIndex = 1;
-	delete[] mergedImageData;
 }
 
 glm::vec4 Renderer::PerPixel(uint32_t x, uint32_t y)
 {
 	Ray ray;
-	ray.Origin = m_ActiveCamera->GetPosition();
-	ray.Direction = m_ActiveCamera->GetRayDirections()[x + y * m_FinalImage->GetWidth()];
 
-	glm::vec3 skyColor = glm::vec3(0.0f, 0.0f, 0.0f);
+	uint32_t rayCountPerPixel = 2;
+	float blurRatio = 0.001f;
+	float focusRatio = 0.01f;
+	glm::vec3 incomingLight{ 0.0f };
+	for (uint32_t i = 0; i < rayCountPerPixel; i++)
+	{
+		glm::vec4 randomDelta = glm::vec4(focusRatio * Utils::RandomUnitPointOnCircle(), 0.0f, 1.0f);
+		glm::vec3 deltaOrigin = m_ActiveCamera->GetInverseProjection() * randomDelta;
+		ray.Origin = m_ActiveCamera->GetPosition() + deltaOrigin;
+		// ray.Origin += glm::vec3(randomDirection.x, randomDirection.y, randomDirection.z);
 
-	glm::vec3 lightDirection = glm::normalize(glm::vec3(-1.0f, -1.0f, -1.0f));
-	glm::vec3 color(0.0f);
-	float colorMultiplier = 0.0f;
+		glm::vec2 coord = { (float)x / (float)m_FinalImage->GetWidth(), (float)y / (float)m_FinalImage->GetHeight() };
+		coord = coord * 2.0f - 1.0f; // -1 -> 1
+
+		glm::vec2 randomDirection = blurRatio * Utils::RandomUnitPointOnCircle();
+		glm::vec4 target = m_ActiveCamera->GetInverseProjection() * glm::vec4(coord.x + randomDirection.x, coord.y + randomDirection.y, 1, 1);
+		ray.Direction = glm::vec3(m_ActiveCamera->GetInverseView() * glm::vec4(glm::normalize(glm::vec3(target) / target.w), 0)); // World space
+
+		// glm::vec2 randomDirection = Utils::RandomUnitPointOnCircle();
+		// ray.Direction = m_ActiveCamera->GetRayDirections()[x + y * m_FinalImage->GetWidth()] + glm::vec3(randomDirection, 0.0f);
+		incomingLight += TracePath(ray);
+	}
+
+	return glm::vec4(incomingLight / (float) rayCountPerPixel, 1.0f);
+
+}
+
+
+glm::vec3 Renderer::TracePath(Ray& ray)
+{
+	glm::vec3 skyColor = glm::vec3(0.1f, 0.1f, 0.5f);
+
+	glm::vec3 incomingLight(0.0f);
+	glm::vec3 rayColor(1.0f);
 
 	Renderer::HitPayload payload;
 
-	int bounces = 3;
+	int bounces = 8;
 	for (int i = 0; i < bounces; i++)
 	{
 		TraceRay(ray, payload);
 
 		if (payload.ObjectIndex < 0)
 		{
-			color = colorMultiplier * color + (1.0f - colorMultiplier) * skyColor;
+			// rayColor *= skyColor;
+			incomingLight += skyColor * rayColor;
 			break;
 		}
 
 		// Shade depends on normal dot (point to light) ray
-		// glm::vec3 lightToPoint = lightDirection;  // lightOrigin - point;
-		// lightToPoint = glm::normalize(lightToPoint);
 		const Sphere& sphere = m_ActiveScene->Spheres[payload.ObjectIndex];
-		float pointExposition = glm::max(glm::dot(-lightDirection, payload.WorldNormal), 0.05f);
 		Material mat = m_ActiveScene->Materials[sphere.MaterialIndex];
-		color = colorMultiplier * color + (1.0f - colorMultiplier) * pointExposition * mat.Albedo;
 
-		// Blend rebound with current color
-		colorMultiplier = 1.0f - (1.0f - colorMultiplier) * (0.1f + 0.5f * mat.Metallic);
+		glm::vec3 emittedLight = mat.EmissionColor * mat.EmissionStrength;
+		glm::vec3 rayColorMultiplier{ 1.0f };
 
+		// Compute next ray
+		bool reflect = !mat.Refract;
 		float r = 0.0001f;
-		float refractionIndex = mat.Specular;
+		float refractionIndex = mat.RefractionIndex;
+		if (mat.Refract)
+		{
+			if (glm::dot(ray.Direction, payload.WorldNormal) < 0)
+				r *= -1.0;
+			else
+				refractionIndex = 1.0f / mat.RefractionIndex;
 
-		if (glm::dot(ray.Direction, payload.WorldNormal) < 0)
-			r *= -1.0;
-		else
-			refractionIndex = 1.0f / mat.Specular;
+			double cos_theta = fmin(glm::dot(-glm::normalize(ray.Direction), payload.WorldNormal), 1.0);
+			double sin_theta = sqrt(1.0 - cos_theta * cos_theta);
 
-		double cos_theta = fmin(glm::dot(-glm::normalize(ray.Direction), payload.WorldNormal), 1.0);
-		double sin_theta = sqrt(1.0 - cos_theta * cos_theta);
+			reflect = refractionIndex * sin_theta > 1.0;
 
-		bool reflect = refractionIndex * sin_theta > 1.0;
-
-		// Use Schlick's approximation for reflectance.
-		float r0 = (1 - refractionIndex) / (1 + refractionIndex);
-		r0 = r0 * r0;
-		float reflectance = r0 + (1 - r0) * pow((1 - cos_theta), 5);
-		reflect = reflect || reflectance > 0.5f * (Walnut::Random::Float() + 1.0f);
+			// Use Schlick's approximation for reflectance.
+			float r0 = (1 - refractionIndex) / (1 + refractionIndex);
+			r0 = r0 * r0;
+			float reflectance = r0 + (1 - r0) * pow((1 - cos_theta), 5);
+			reflect = reflect || (reflectance > Utils::RandomFloat());
+		}
 
 		if (reflect)
 		{
-			ray.Origin = payload.WorldPosition + payload.WorldNormal * 0.0001f;
-			glm::vec3 randomBounceVec(2.0f);  // = Walnut::Random::Vec3(-0.5f, 0.5f);
-			while (glm::dot(randomBounceVec, randomBounceVec) >= 1.0f)
-				randomBounceVec = Walnut::Random::Vec3(-1.0f, 1.0f);
+			glm::vec3 randomBounceVec = Utils::RandomUnitVector();
 			if (glm::dot(randomBounceVec, payload.WorldNormal) < 0.0) // In the same hemisphere as the normal
 				randomBounceVec *= -1.0f;
-			randomBounceVec = glm::normalize(randomBounceVec);
+
+			glm::vec3 diffuseDirection = glm::normalize(payload.WorldNormal + randomBounceVec);
 			// Reflect(v, n) = v - 2 * dot(v, n) * n;
-			ray.Direction = glm::reflect(ray.Direction, payload.WorldNormal) + mat.Roughness * randomBounceVec;
-			// ray.Direction = randomBounceVec;
+			glm::vec3 specularDirection = glm::reflect(ray.Direction, payload.WorldNormal);
+
+			float specularBounce = (float)(mat.Specular > Utils::RandomFloat());
+
+			float bounceBlend = (1.0f - mat.Roughness) * specularBounce;
+			ray.Origin = payload.WorldPosition + payload.WorldNormal * 0.00001f;
+			ray.Direction = (1.0f - bounceBlend) * diffuseDirection + bounceBlend * specularDirection;
+			// rayColorMultiplier = (1.0f - specularBounce) * mat.Albedo + specularBounce * mat.SpecularColor;
+			rayColorMultiplier = mat.Albedo;
 		}
 		else
 		{
 			ray.Origin = payload.WorldPosition + payload.WorldNormal * r;
 			ray.Direction = glm::refract(glm::normalize(ray.Direction), payload.WorldNormal, refractionIndex);
 		}
+
+		// Blend colors
+		incomingLight += emittedLight * rayColor;
+		rayColor *= rayColorMultiplier;
 	}
-
-	return glm::vec4(color, 1.0f);
-
+	return incomingLight;
 }
+
 
 void Renderer::TraceRay(const Ray& ray, Renderer::HitPayload& payload)
 {

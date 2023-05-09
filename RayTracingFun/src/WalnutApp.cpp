@@ -23,30 +23,119 @@ public:
 			mat.Roughness = 1.0f;
 			mat.Metallic = 0.0f;
 			mat.Specular = 1.0f;
+			mat.EmissionColor = { 1.0f, 1.0f, 1.0f };
+			mat.EmissionStrength = 1.0f;
 			m_Scene.Materials.push_back(mat);
 		}
 		{
 			Material mat;
 			mat.Albedo = { 0.0f, 0.0f, 1.0f };
+			mat.Roughness = 0.0f;
+			mat.Metallic = 0.0f;
+			mat.Specular = 0.7f;
+			mat.EmissionColor = { 1.0f, 1.0f, 1.0f };
+			mat.EmissionStrength = 0.0f;
+			m_Scene.Materials.push_back(mat);
+		}
+		{
+			Material mat;
+			mat.Albedo = { 1.0f, 0.0f, 1.0f };
+			mat.Roughness = 0.0f;
+			mat.Metallic = 0.0f;
+			mat.Specular = 0.7f;
+			mat.EmissionColor = { 1.0f, 1.0f, 1.0f };
+			mat.EmissionStrength = 0.0f;
+			m_Scene.Materials.push_back(mat);
+		}
+		{
+			Material mat;
+			mat.Albedo = { 0.0f, 1.0f, 0.3f };
+			mat.Roughness = 0.0f;
+			mat.Metallic = 0.0f;
+			mat.Specular = 0.7f;
+			mat.EmissionColor = { 1.0f, 1.0f, 1.0f };
+			mat.EmissionStrength = 0.0f;
+			m_Scene.Materials.push_back(mat);
+		}
+		{
+			Material mat;
+			mat.Albedo = { 0.8f, 0.2f, 0.3f };
 			mat.Roughness = 1.0f;
 			mat.Metallic = 0.0f;
 			mat.Specular = 0.0f;
+			mat.EmissionColor = { 1.0f, 1.0f, 1.0f };
+			mat.EmissionStrength = 0.0f;
+			m_Scene.Materials.push_back(mat);
+		}
+		{
+			Material mat;
+			mat.Albedo = { 0.2f, 0.8f, 0.3f };
+			mat.Roughness = 1.0f;
+			mat.Metallic = 0.0f;
+			mat.Specular = 0.0f;
+			mat.EmissionColor = { 1.0f, 1.0f, 1.0f };
+			mat.EmissionStrength = 0.0f;
+			m_Scene.Materials.push_back(mat);
+		}
+		{
+			Material mat;
+			mat.Albedo = { 0.4f, 0.2f, 0.5f };
+			mat.Roughness = 0.7f;
+			mat.Metallic = 0.0f;
+			mat.Specular = 0.5f;
+			mat.EmissionColor = { 1.0f, 1.0f, 1.0f };
+			mat.EmissionStrength = 0.0f;
 			m_Scene.Materials.push_back(mat);
 		}
 
 		{
 			Sphere sphere;
-			sphere.Position = { -1.7f,0.0f, -1.6f };
-			sphere.Radius = 2.0f;
+			sphere.Position = { 0.0f, 23.0f, -5.0f };
+			sphere.Radius = 20.0f;
 			sphere.MaterialIndex = 0;
 			m_Scene.Spheres.push_back(sphere);
 		}
 
 		{
 			Sphere sphere;
-			sphere.Position = { 1.0f,0.0f, -3.0f };
+			sphere.Position = { -5.0f,0.0f, -5.0f };
+			sphere.Radius = 1.0f;
+			sphere.MaterialIndex = 6;
+			m_Scene.Spheres.push_back(sphere);
+		}
+		{
+			Sphere sphere;
+			sphere.Position = { -2.5f,0.0f, -5.0f };
 			sphere.Radius = 1.0f;
 			sphere.MaterialIndex = 1;
+			m_Scene.Spheres.push_back(sphere);
+		}
+		{
+			Sphere sphere;
+			sphere.Position = { 0.0f,0.0f, -5.0f };
+			sphere.Radius = 1.0f;
+			sphere.MaterialIndex = 2;
+			m_Scene.Spheres.push_back(sphere);
+		}
+		{
+			Sphere sphere;
+			sphere.Position = { 2.5f,0.0f, -5.0f };
+			sphere.Radius = 1.0f;
+			sphere.MaterialIndex = 3;
+			m_Scene.Spheres.push_back(sphere);
+		}
+		{
+			Sphere sphere;
+			sphere.Position = { 5.0f,0.0f, -5.0f };
+			sphere.Radius = 1.0f;
+			sphere.MaterialIndex = 5;
+			m_Scene.Spheres.push_back(sphere);
+		}
+		{
+			Sphere sphere;
+			sphere.Position = { 0.0f, -502.0f, -5.0f };
+			sphere.Radius = 500.0f;
+			sphere.MaterialIndex = 4;
 			m_Scene.Spheres.push_back(sphere);
 		}
 	}
@@ -107,6 +196,12 @@ public:
 			ImGui::DragFloat("Roughness", &mat.Roughness, 0.01f, 0.0f, 1.0f);
 			ImGui::DragFloat("Metallic", &mat.Metallic, 0.01f, 0.0f, 1.0f);
 			ImGui::DragFloat("Specular", &mat.Specular, 0.01f, 0.0f, 1.0f);
+			ImGui::Checkbox("Refract", &mat.Refract);
+			if (mat.Refract)
+				ImGui::DragFloat("Refraction index", &mat.RefractionIndex, 0.01f, -10.0f, 10.0f);
+			ImGui::ColorEdit3("Emission color", glm::value_ptr(mat.EmissionColor));
+			ImGui::DragFloat("Emission strength", &mat.EmissionStrength, 0.01f, 0.0f, 1.0f);
+			ImGui::Separator();
 
 			ImGui::PopID();
 		}

@@ -38,6 +38,7 @@ private:
 
 	glm::vec4 PerPixel(uint32_t x, uint32_t y);  // Ray gen shader
 
+	glm::vec3 TracePath(Ray& ray);
 	void TraceRay(const Ray& ray, Renderer::HitPayload& payload);
 	void ClosestHit(const Ray& ray, Renderer::HitPayload& payload);
 	void Miss(const Ray& ray, Renderer::HitPayload& payload);
